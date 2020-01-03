@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	// "github.com/davecgh/go-spew/spew"
-	// "github.com/vitessio/vitess/go/vt/sqlparser"
-	"github.com/xwb1989/sqlparser"
+	"github.com/vitessio/vitess/go/vt/sqlparser"
+	// "github.com/xwb1989/sqlparser"
 )
 
 func main() {

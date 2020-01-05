@@ -1,6 +1,8 @@
 package main
 
 import (
+	// "github.com/davecgh/go-spew/spew"
+	
 	"github.com/vitessio/vitess/go/vt/sqlparser"
 )
 

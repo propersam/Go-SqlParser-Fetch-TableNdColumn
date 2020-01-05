@@ -2,8 +2,9 @@ package main
 
 import (
 	// "github.com/davecgh/go-spew/spew"
-	
+
 	"github.com/vitessio/vitess/go/vt/sqlparser"
+	// "github.com/xwb1989/sqlparser"
 )
 
 // ParseQuery function receives a query as parameter and

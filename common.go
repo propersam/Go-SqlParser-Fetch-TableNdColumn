@@ -85,6 +85,7 @@ func getColumnNames(s interface{}, columns []string, level int) []string {
 			for _, column := range columns {
 				if colName == column {
 					exists = true
+					break
 				}
 			}
 			if !exists {
@@ -176,6 +177,7 @@ func getTableNames(s interface{}, tables []string, level int) []string {
 			for _, table := range tables {
 				if tableName == table {
 					exists = true
+					break
 				}
 			}
 			if !exists {

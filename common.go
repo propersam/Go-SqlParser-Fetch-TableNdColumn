@@ -9,12 +9,10 @@ import (
 
 func getColumnNames(s interface{}, columns []string, level int) []string {
 
-	sType := fmt.Sprintf("%T", s)
-
-	switch sType {
-	case "*sqlparser.Select":
+	switch v := s.(type) {
+	case *sqlparser.Select:
 		// Checking for unique columns in Select expresion from statement
-		selectExprs := s.(*sqlparser.Select).SelectExprs
+		selectExprs := v.SelectExprs
 		if len(selectExprs) > 0 {
 			for _, selectExpr := range selectExprs {
 				columns = getColumnNames(selectExpr, columns, level+1)
@@ -22,11 +20,11 @@ func getColumnNames(s interface{}, columns []string, level int) []string {
 		}
 
 		// checking for unique columns in the FROM section of statement
-		from := s.(*sqlparser.Select).From
+		from := v.From
 		columns = getColumnNames(from, columns, level+1)
 
 		// Checking for unique columns in OrderBy clause from statement
-		orderBy := s.(*sqlparser.Select).OrderBy
+		orderBy := v.OrderBy
 		if len(orderBy) > 0 {
 			for _, order := range orderBy {
 				columns = getColumnNames(order, columns, level+1)
@@ -34,49 +32,49 @@ func getColumnNames(s interface{}, columns []string, level int) []string {
 		}
 
 		// Checking for unique columns in Where clause from statement
-		whereClause := s.(*sqlparser.Select).Where
+		whereClause := v.Where
 		if whereClause != nil {
 			columns = getColumnNames(whereClause, columns, level+1)
 		}
 
 		// Checking for unique columns in Having clause
-		having := s.(*sqlparser.Select).Having
+		having := v.Having
 		if having != nil {
 			// for some reason, this is also of type *sqlparser.Where
 			columns = getColumnNames(having, columns, level+1)
 		}
 
 		// checking for unique columns in GroupBy clause
-		groupBy := s.(*sqlparser.Select).GroupBy
+		groupBy := v.GroupBy
 		if len(groupBy) > 0 {
 			for _, group := range groupBy {
 				columns = getColumnNames(group, columns, level+1)
 			}
 		}
 
-	case "*sqlparser.AliasedExpr":
-		aliasedExp := s.(*sqlparser.AliasedExpr)
+	case *sqlparser.AliasedExpr:
+		aliasedExp := v
 		colExpr := aliasedExp.Expr
 		columns = getColumnNames(colExpr, columns, level+1)
 
-	case "*sqlparser.FuncExpr":
+	case *sqlparser.FuncExpr:
 		// This is to handle function commands like:
 		// SUM, COUNT, AVG, MIN, MAX etc.
-		funcExpr := s.(*sqlparser.FuncExpr)
+		funcExpr := v
 		for _, expr := range funcExpr.Exprs {
 			columns = getColumnNames(expr, columns, level+1)
 		}
 
-	case "*sqlparser.Order":
-		order := s.(*sqlparser.Order).Expr
+	case *sqlparser.Order:
+		order := v.Expr
 		columns = getColumnNames(order, columns, level+1)
 
-	case "*sqlparser.Where":
-		where := s.(*sqlparser.Where).Expr
+	case *sqlparser.Where:
+		where := v.Expr
 		columns = getColumnNames(where, columns, level+1)
 
-	case "*sqlparser.ColName":
-		colIdent := s.(*sqlparser.ColName).Name
+	case *sqlparser.ColName:
+		colIdent := v.Name
 		colName := colIdent.String()
 
 		if colName != "" {
@@ -93,49 +91,49 @@ func getColumnNames(s interface{}, columns []string, level int) []string {
 			}
 		}
 
-	case "*sqlparser.StarExpr":
+	case *sqlparser.StarExpr:
 		columns = append(columns, "*")
 
-	case "*sqlparser.AndExpr":
-		leftExpr := s.(*sqlparser.AndExpr).Left
+	case *sqlparser.AndExpr:
+		leftExpr := v.Left
 		columns = getColumnNames(leftExpr, columns, level+1)
 
-		right := s.(*sqlparser.AndExpr).Right
+		right := v.Right
 		columns = getColumnNames(right, columns, level+1)
 
-	case "*sqlparser.OrExpr":
-		leftExpr := s.(*sqlparser.OrExpr).Left
+	case *sqlparser.OrExpr:
+		leftExpr := v.Left
 		columns = getColumnNames(leftExpr, columns, level+1)
 
-		right := s.(*sqlparser.OrExpr).Right
+		right := v.Right
 		columns = getColumnNames(right, columns, level+1)
 
-	case "*sqlparser.NotExpr":
-		expr := s.(*sqlparser.NotExpr).Expr
+	case *sqlparser.NotExpr:
+		expr := v.Expr
 		columns = getColumnNames(expr, columns, level+1)
 
-	case "*sqlparser.ComparisonExpr":
-		leftSide := s.(*sqlparser.ComparisonExpr).Left
+	case *sqlparser.ComparisonExpr:
+		leftSide := v.Left
 		columns = getColumnNames(leftSide, columns, level+1)
 
-	case "sqlparser.TableExprs":
-		for _, tableExpr := range s.(sqlparser.TableExprs) {
+	case sqlparser.TableExprs:
+		for _, tableExpr := range v {
 			columns = getColumnNames(tableExpr, columns, level+1)
 		}
 
-	case "*sqlparser.AliasedTableExpr":
+	case *sqlparser.AliasedTableExpr:
 		// Do nothing
 
-	case "*sqlparser.JoinTableExpr":
-		condition := s.(*sqlparser.JoinTableExpr).Condition
+	case *sqlparser.JoinTableExpr:
+		condition := v.Condition
 		columns = getColumnNames(condition, columns, level+1)
 
-	case "sqlparser.JoinCondition":
-		onCondition := s.(sqlparser.JoinCondition).On
+	case sqlparser.JoinCondition:
+		onCondition := v.On
 		columns = getColumnNames(onCondition, columns, level+1)
 
 	default:
-		panic(fmt.Sprintf("Error in recursive level [%d].\nThis type '(%s)' is unaccounted for\n", level, sType))
+		panic(fmt.Sprintf("Error in recursive level [%d].\nThis type '(%T)' is unaccounted for\n", level, v))
 
 	}
 
@@ -144,31 +142,29 @@ func getColumnNames(s interface{}, columns []string, level int) []string {
 
 func getTableNames(s interface{}, tables []string, level int) []string {
 
-	sType := fmt.Sprintf("%T", s)
+	switch v := s.(type) {
 
-	switch sType {
-
-	case "*sqlparser.Select":
-		tableExprs := s.(*sqlparser.Select).From
+	case *sqlparser.Select:
+		tableExprs := v.From
 		if len(tableExprs) > 0 {
 			for _, tableExpr := range tableExprs {
 				tables = getTableNames(tableExpr, tables, level+1)
 			}
 		}
 
-	case "*sqlparser.AliasedTableExpr":
-		tableExpr := s.(*sqlparser.AliasedTableExpr).Expr
+	case *sqlparser.AliasedTableExpr:
+		tableExpr := v.Expr
 		tables = getTableNames(tableExpr, tables, level+1)
 
-	case "*sqlparser.JoinTableExpr":
-		leftExpr := s.(*sqlparser.JoinTableExpr).LeftExpr
+	case *sqlparser.JoinTableExpr:
+		leftExpr := v.LeftExpr
 		tables = getTableNames(leftExpr, tables, level+1)
 
-		rightExpr := s.(*sqlparser.JoinTableExpr).RightExpr
+		rightExpr := v.RightExpr
 		tables = getTableNames(rightExpr, tables, level+1)
 
-	case "sqlparser.TableName":
-		tableIdent := s.(sqlparser.TableName).Name
+	case sqlparser.TableName:
+		tableIdent := v.Name
 		tableName := tableIdent.String()
 
 		if tableName != "" {
@@ -186,7 +182,7 @@ func getTableNames(s interface{}, tables []string, level int) []string {
 		}
 
 	default:
-		panic(fmt.Sprintf("Error in recursive level [%d].\nThis type '(%s)' is unaccounted for\n", level, sType))
+		panic(fmt.Sprintf("Error in recursive level [%d].\nThis type '(%T)' is unaccounted for\n", level, v))
 
 	}
 
